@@ -1,6 +1,7 @@
-plugin: community.general.proxmox
-url: "{{ lookup('env', 'PROXMOX_URL') }}"
-token_id: "{{ lookup('env', 'PROXMOX_TOKEN_ID') }}"
-token_secret: "{{ lookup('env', 'PROXMOX_TOKEN_SECRET') }}"
+plugin: community.proxmox.proxmox   
+url: "https://pve-azubi-c1-1.rox.net:8006/"      
 validate_certs: false
 want_facts: true
+user: "{{ lookup('env', 'PROXMOX_USER') }}"
+token_id: "{{ lookup('env', 'PROXMOX_TOKEN_ID') }}"
+token_secret: "{{ lookup('env', 'PROXMOX_TOKEN_SECRET') }}"
