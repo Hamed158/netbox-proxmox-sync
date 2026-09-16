@@ -1,0 +1,57 @@
+---
+- name: Sync Proxmox QEMU VMs into NetBox
+  hosts: proxmox_all_qemu
+  connection: local
+  gather_facts: false
+
+  vars:
+    netbox_url: "{{ lookup('env', 'NETBOX_URL') }}"
+    netbox_token: "{{ lookup('env', 'NETBOX_TOKEN') }}"
+    netbox_cluster: "Azubi Proxmox Cluster"
+
+  tasks:
+    - name: Map status and vCPUs
+      ansible.builtin.set_fact:
+        nb_status: "{{ 'active' if proxmox_status == 'running' else 'offline' }}"
+        nb_vcpus: "{{ (proxmox_cores | int) * (proxmox_sockets | default(1) | int) }}"
+
+    - name: Ensure QEMU VM exists in NetBox
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          name: "{{ proxmox_name }}"
+          cluster: "{{ netbox_cluster }}"
+          status: "{{ nb_status }}"
+          vcpus: "{{ nb_vcpus }}"
+          memory: "{{ proxmox_memory }}"
+        state: present
+
+- name: Sync Proxmox LXC containers into NetBox
+  hosts: proxmox_all_lxc
+  connection: local
+  gather_facts: false
+
+  vars:
+    netbox_url: "{{ lookup('env', 'NETBOX_URL') }}"
+    netbox_token: "{{ lookup('env', 'NETBOX_TOKEN') }}"
+    netbox_cluster: "Azubi Proxmox Cluster"
+
+  tasks:
+    - name: Map status
+      ansible.builtin.set_fact:
+        nb_status: "{{ 'active' if proxmox_status == 'running' else 'offline' }}"
+
+    - name: Ensure LXC container exists in NetBox
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          name: "{{ proxmox_hostname }}"
+          cluster: "{{ netbox_cluster }}"
+          status: "{{ nb_status }}"
+          vcpus: "{{ proxmox_cores }}"
+          memory: "{{ proxmox_memory }}"
+        state: present
