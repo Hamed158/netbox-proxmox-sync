@@ -10,10 +10,10 @@
     netbox_cluster: "Azubi Proxmox Cluster"
 
   tasks:
-    - name: Ensure pynetbox is installed
+    - name: Ensure pynetbox is installed to a writable location
       ansible.builtin.pip:
         name: pynetbox
-        extra_args: --user
+        extra_args: "--target=/tmp/py-libs"
       delegate_to: localhost
       run_once: true
 
@@ -34,6 +34,8 @@
           vcpus: "{{ nb_vcpus }}"
           memory: "{{ proxmox_memory }}"
         state: present
+      environment:
+        PYTHONPATH: /tmp/py-libs
 
 - name: Sync Proxmox LXC containers into NetBox
   hosts: proxmox_all_lxc
@@ -46,10 +48,10 @@
     netbox_cluster: "Azubi Proxmox Cluster"
 
   tasks:
-    - name: Ensure pynetbox is installed
+    - name: Ensure pynetbox is installed to a writable location
       ansible.builtin.pip:
         name: pynetbox
-        extra_args: --user
+        extra_args: "--target=/tmp/py-libs"
       delegate_to: localhost
       run_once: true
 
@@ -69,3 +71,5 @@
           vcpus: "{{ proxmox_cores }}"
           memory: "{{ proxmox_memory }}"
         state: present
+      environment:
+        PYTHONPATH: /tmp/py-libs
