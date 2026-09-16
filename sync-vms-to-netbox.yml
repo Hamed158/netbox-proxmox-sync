@@ -7,7 +7,6 @@
   vars:
     netbox_url: "{{ lookup('env', 'NETBOX_URL') }}"
     netbox_token: "{{ lookup('env', 'NETBOX_TOKEN') }}"
-    netbox_cluster: "Azubi Proxmox Cluster"
 
   tasks:
     - name: Ensure pynetbox is installed to a writable location
@@ -29,7 +28,7 @@
         validate_certs: false
         data:
           name: "{{ proxmox_name }}"
-          cluster: "{{ netbox_cluster }}"
+          cluster: "{{ proxmox_node }}"
           status: "{{ nb_status }}"
           vcpus: "{{ nb_vcpus }}"
           memory: "{{ proxmox_memory }}"
@@ -45,7 +44,6 @@
   vars:
     netbox_url: "{{ lookup('env', 'NETBOX_URL') }}"
     netbox_token: "{{ lookup('env', 'NETBOX_TOKEN') }}"
-    netbox_cluster: "Azubi Proxmox Cluster"
 
   tasks:
     - name: Ensure pynetbox is installed to a writable location
@@ -66,7 +64,7 @@
         validate_certs: false
         data:
           name: "{{ proxmox_hostname }}"
-          cluster: "{{ netbox_cluster }}"
+          cluster: "{{ proxmox_node }}"
           status: "{{ nb_status }}"
           vcpus: "{{ proxmox_cores }}"
           memory: "{{ proxmox_memory }}"
