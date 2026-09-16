@@ -10,6 +10,13 @@
     netbox_cluster: "Azubi Proxmox Cluster"
 
   tasks:
+    - name: Ensure pynetbox is installed
+      ansible.builtin.pip:
+        name: pynetbox
+        extra_args: --user
+      delegate_to: localhost
+      run_once: true
+
     - name: Map status and vCPUs
       ansible.builtin.set_fact:
         nb_status: "{{ 'active' if proxmox_status == 'running' else 'offline' }}"
@@ -39,6 +46,13 @@
     netbox_cluster: "Azubi Proxmox Cluster"
 
   tasks:
+    - name: Ensure pynetbox is installed
+      ansible.builtin.pip:
+        name: pynetbox
+        extra_args: --user
+      delegate_to: localhost
+      run_once: true
+
     - name: Map status
       ansible.builtin.set_fact:
         nb_status: "{{ 'active' if proxmox_status == 'running' else 'offline' }}"
