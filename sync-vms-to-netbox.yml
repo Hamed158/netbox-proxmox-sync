@@ -60,22 +60,6 @@
         - vm_ip is not defined
         - (item['ip-addresses'] | selectattr('ip-address-type','equalto','ipv4') | list | length) > 0
 
-    - name: Remove stray eth0 interface from a previous run, if present and wrong
-      netbox.netbox.netbox_vm_interface:
-        netbox_url: "{{ netbox_url }}"
-        netbox_token: "{{ netbox_token }}"
-        validate_certs: false
-        data:
-          name: "eth0"
-          virtual_machine: "{{ proxmox_name }}"
-        state: absent
-      when:
-        - vm_ip is defined
-        - vm_iface != "eth0"
-      ignore_errors: true
-      environment:
-        PYTHONPATH: /tmp/py-libs
-
     - name: Ensure VM interface exists in NetBox
       netbox.netbox.netbox_vm_interface:
         netbox_url: "{{ netbox_url }}"
@@ -100,6 +84,20 @@
             virtual_machine: "{{ proxmox_name }}"
             name: "{{ vm_iface }}"
           status: active
+        state: present
+      when: vm_ip is defined
+      environment:
+        PYTHONPATH: /tmp/py-libs
+
+    - name: Set primary IPv4 on the VM
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          name: "{{ proxmox_name }}"
+          cluster: "{{ proxmox_node }}"
+          primary_ip4: "{{ vm_ip }}/24"
         state: present
       when: vm_ip is defined
       environment:
