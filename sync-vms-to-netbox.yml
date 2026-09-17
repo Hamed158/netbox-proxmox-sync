@@ -141,7 +141,7 @@
 
     - name: Get container IP via pct exec
       ansible.builtin.command: >
-        pct exec {{ proxmox_vmid }} -- ip -4 -o addr show scope global
+        /usr/sbin/pct exec {{ proxmox_vmid }} -- ip -4 -o addr show scope global
       delegate_to: "{{ proxmox_node }}"
       register: pct_ip_output
       ignore_errors: true
