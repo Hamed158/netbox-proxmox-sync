@@ -138,3 +138,64 @@
         state: present
       environment:
         PYTHONPATH: /tmp/py-libs
+
+    - name: Get container IP via pct exec
+      ansible.builtin.command: >
+        pct exec {{ proxmox_vmid }} -- ip -4 -o addr show scope global
+      delegate_to: "{{ proxmox_node }}"
+      register: pct_ip_output
+      ignore_errors: true
+      changed_when: false
+
+    - name: Extract IP and interface name from pct output
+      ansible.builtin.set_fact:
+        ct_ip: "{{ pct_ip_output.stdout_lines[0].split()[3].split('/')[0] }}"
+        ct_iface: "{{ pct_ip_output.stdout_lines[0].split()[1] }}"
+      when:
+        - pct_ip_output.rc is defined
+        - pct_ip_output.rc == 0
+        - pct_ip_output.stdout_lines is defined
+        - pct_ip_output.stdout_lines | length > 0
+
+    - name: Ensure LXC interface exists in NetBox
+      netbox.netbox.netbox_vm_interface:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          name: "{{ ct_iface }}"
+          virtual_machine: "{{ proxmox_hostname }}"
+        state: present
+      when: ct_ip is defined
+      environment:
+        PYTHONPATH: /tmp/py-libs
+
+    - name: Ensure LXC IP address exists and is assigned
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          address: "{{ ct_ip }}/24"
+          assigned_object:
+            virtual_machine: "{{ proxmox_hostname }}"
+            name: "{{ ct_iface }}"
+          status: active
+        state: present
+      when: ct_ip is defined
+      environment:
+        PYTHONPATH: /tmp/py-libs
+
+    - name: Set primary IPv4 on the LXC container
+      netbox.netbox.netbox_virtual_machine:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          name: "{{ proxmox_hostname }}"
+          cluster: "{{ proxmox_node }}"
+          primary_ip4: "{{ ct_ip }}/24"
+        state: present
+      when: ct_ip is defined
+      environment:
+        PYTHONPATH: /tmp/py-libs
