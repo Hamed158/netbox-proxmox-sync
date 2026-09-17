@@ -48,10 +48,33 @@
       delegate_to: localhost
       ignore_errors: true
 
-    - name: Extract first real IPv4 address
+    - name: Determine interface and IP from guest agent data
       ansible.builtin.set_fact:
-        vm_ip: "{{ (agent_net.json.data.result | default([]) | selectattr('name', 'ne', 'lo') | map(attribute='ip-addresses') | flatten | selectattr('ip-address-type', 'equalto', 'ipv4') | map(attribute='ip-address') | list | first) | default(omit) }}"
-      when: agent_net.status == 200 and agent_net.json.data is not none
+        vm_ip: "{{ item['ip-addresses'] | selectattr('ip-address-type','equalto','ipv4') | map(attribute='ip-address') | list | first }}"
+        vm_iface: "{{ item.name }}"
+      loop: "{{ agent_net.json.data.result | default([]) }}"
+      when:
+        - agent_net.status == 200
+        - agent_net.json.data is not none
+        - item.name != 'lo'
+        - vm_ip is not defined
+        - (item['ip-addresses'] | selectattr('ip-address-type','equalto','ipv4') | list | length) > 0
+
+    - name: Remove stray eth0 interface from a previous run, if present and wrong
+      netbox.netbox.netbox_vm_interface:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          name: "eth0"
+          virtual_machine: "{{ proxmox_name }}"
+        state: absent
+      when:
+        - vm_ip is defined
+        - vm_iface != "eth0"
+      ignore_errors: true
+      environment:
+        PYTHONPATH: /tmp/py-libs
 
     - name: Ensure VM interface exists in NetBox
       netbox.netbox.netbox_vm_interface:
@@ -59,7 +82,7 @@
         netbox_token: "{{ netbox_token }}"
         validate_certs: false
         data:
-          name: "eth0"
+          name: "{{ vm_iface }}"
           virtual_machine: "{{ proxmox_name }}"
         state: present
       when: vm_ip is defined
@@ -75,7 +98,7 @@
           address: "{{ vm_ip }}/24"
           assigned_object:
             virtual_machine: "{{ proxmox_name }}"
-            name: "eth0"
+            name: "{{ vm_iface }}"
           status: active
         state: present
       when: vm_ip is defined
