@@ -36,6 +36,52 @@
       environment:
         PYTHONPATH: /tmp/py-libs
 
+    - name: Query guest agent for network interfaces
+      ansible.builtin.uri:
+        url: "{{ lookup('env', 'PROXMOX_URL') }}/api2/json/nodes/{{ proxmox_node }}/qemu/{{ proxmox_vmid }}/agent/network-get-interfaces"
+        headers:
+          Authorization: "PVEAPIToken={{ lookup('env','PROXMOX_USER') }}!{{ lookup('env','PROXMOX_TOKEN_ID') }}={{ lookup('env','PROXMOX_TOKEN_SECRET') }}"
+        validate_certs: false
+        method: GET
+        status_code: [200, 500]
+      register: agent_net
+      delegate_to: localhost
+      ignore_errors: true
+
+    - name: Extract first real IPv4 address
+      ansible.builtin.set_fact:
+        vm_ip: "{{ (agent_net.json.data.result | default([]) | selectattr('name', 'ne', 'lo') | map(attribute='ip-addresses') | flatten | selectattr('ip-address-type', 'equalto', 'ipv4') | map(attribute='ip-address') | list | first) | default(omit) }}"
+      when: agent_net.status == 200 and agent_net.json.data is not none
+
+    - name: Ensure VM interface exists in NetBox
+      netbox.netbox.netbox_vm_interface:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          name: "eth0"
+          virtual_machine: "{{ proxmox_name }}"
+        state: present
+      when: vm_ip is defined
+      environment:
+        PYTHONPATH: /tmp/py-libs
+
+    - name: Ensure IP address exists and is assigned
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          address: "{{ vm_ip }}/24"
+          assigned_object:
+            virtual_machine: "{{ proxmox_name }}"
+            name: "eth0"
+          status: active
+        state: present
+      when: vm_ip is defined
+      environment:
+        PYTHONPATH: /tmp/py-libs
+
 - name: Sync Proxmox LXC containers into NetBox
   hosts: proxmox_all_lxc
   connection: local
